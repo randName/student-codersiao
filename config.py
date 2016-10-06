@@ -1,5 +1,6 @@
 import os
 
+TOKEN_KEY = os.getenv('TOKEN_KEY')
 REDIS_URL = os.getenv('REDIS_URL')
 SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
