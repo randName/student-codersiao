@@ -55,8 +55,25 @@ def bot_message(uid, message):
             if tier is None: tier = 'econ'
             response['text'] = "Choose your meal"
             response['options'] = tuple(rd.smembers('meal:%s' % tier))
+            
     else:
-        response['text'] = "Ok!"
+        if (message == "Bee Hoon" or message == "Fried Rice"):
+            response['text'] = "You have selected " + message + " as your inflight meal. Use /cancel if you would like to cancel."
+        
+        elif (message == "Notifications"):
+            response['text'] = "Notifications has been turn off."
+
+        elif (message == "Timings"):
+            response['text'] = "Your flight is departing at 10pm today."
+
+        elif (message == "Seat number"):
+            reponse['text'] = "Your seat number is 23A. Have a pleasant flight."
+
+        elif (message == "Check-in Row"):
+            reponse['text'] = "You will be checking in at row 8."
+
+        else:
+            set_state('idle')
 
     return response
 
