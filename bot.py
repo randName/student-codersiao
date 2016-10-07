@@ -30,10 +30,12 @@ def bot_init(service, sid, uid):
 def bot_message(uid, message):
 
     def set_state(state):
+        rd.hset(uid, 'pstate', rd.hget(uid, 'state'))
         rd.hset(uid, 'state', state)
 
     response = {}
     state = rd.hget(uid, 'state')
+    prev_state = rd.hget(uid, 'pstate')
 
     if message.startswith('/'):
         cmd = message[1:]
@@ -53,6 +55,12 @@ def bot_message(uid, message):
             set_state('flight')
             response['text'] = "What can I help you with?"
             response['options'] = ("Timings", "Seat number", "Check-in Row")
+        elif cmd == 'queue':
+            if state == 'row open':
+                rd.rpush('queue', uid)
+                response['text'] = "Ok, you are #%d" % rd.llen('queue')
+            else:
+                response['text'] = "Sorry, your row is not open yet"
         elif cmd == 'meal':
             set_state('meal')
             tier = rd.hget(uid, 'meal')
@@ -60,13 +68,13 @@ def bot_message(uid, message):
             response['text'] = "Choose your meal"
             response['options'] = tuple(rd.smembers('meal:%s' % tier))
     else:
-        if state == 'meal'
+        if state == 'meal':
             response['text'] = "You have selected %s as your inflight meal" % message
-            set_state('idle')
+            set_state(prev_state)
         elif state == 'options':
             if message == 'Notifications':
                 response['text'] = "Notifications have been turned off."
-            set_state('idle')
+            set_state(prev_state)
         elif state == 'flight':
             if message == 'Timings':
                 response['text'] = "Your flight is departing at 10pm today."
@@ -74,7 +82,7 @@ def bot_message(uid, message):
                 response['text'] = "Your seat number is 23A. Have a pleasant flight."
             elif message == "Check-in Row":
                 response['text'] = "You will be checking in at row 8."
-            set_state('idle')
+            set_state(prev_state)
         else:
             response['text'] = "I'm sorry, I didn't understand that."
 
@@ -90,12 +98,19 @@ def bot_updates():
         status = flights.get(f, None)
         notified = rd.hget(u,'notified')
 
-        if status != notified:
+        if rd.lindex('queue',0) == u:
+            if notified != 'row queue':
+                resp['text'] = "You are up next in the queue\nPlease be there in 5 minutes"
+                rd.hset(u, 'notified', 'row queue')
+
+        elif status != notified:
             if status == "gate open":
                 resp['text'] = "Your boarding gate is open."
             elif status == "row open":
                 resp['text'] = "Your check-in row is open.\nYou can /queue for a number"
             rd.hset(u, 'notified', status)
+            rd.hset(u, 'pstate', rd.hget(u, 'state'))
+            rd.hset(u, 'state', status)
 
         if resp:
             resp['uid'] = u
