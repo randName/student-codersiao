@@ -65,15 +65,15 @@ def bot_message(uid, message):
             set_state('idle')
         elif state == 'options':
             if message == 'Notifications':
-                response['text'] = "Notifications has been turn off."
+                response['text'] = "Notifications have been turned off."
             set_state('idle')
         elif state == 'flight':
             if message == 'Timings':
                 response['text'] = "Your flight is departing at 10pm today."
             elif message == "Seat number":
-                reponse['text'] = "Your seat number is 23A. Have a pleasant flight."
+                response['text'] = "Your seat number is 23A. Have a pleasant flight."
             elif message == "Check-in Row":
-                reponse['text'] = "You will be checking in at row 8."
+                response['text'] = "You will be checking in at row 8."
             set_state('idle')
         else:
             response['text'] = "I'm sorry, I didn't understand that."
