@@ -16,6 +16,13 @@ You can ask for information by sending these commands:
 /cancel - Cancel the current command
 """
 
+def get_id(service, sid):
+    return rd.hget(service, sid)
+
+def bot_init(service, sid, uid):
+    rd.hset(service, sid, uid)
+    return uid
+
 def bot_message(uid, message):
 
     def set_state(state):
