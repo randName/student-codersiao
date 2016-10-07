@@ -16,11 +16,15 @@ You can ask for information by sending these commands:
 /cancel - Cancel the current command
 """
 
-def get_id(service, sid):
-    return rd.hget(service, sid)
+def get_id(service, sid=None, uid=None):
+    if sid:
+        return rd.hget(service, sid)
+    if uid:
+        return rd.hget('%s:r' % service, uid)
 
 def bot_init(service, sid, uid):
     rd.hset(service, sid, uid)
+    rd.hset('%s:r' % service, uid, sid)
     return uid
 
 def bot_message(uid, message):
@@ -55,27 +59,49 @@ def bot_message(uid, message):
             if tier is None: tier = 'econ'
             response['text'] = "Choose your meal"
             response['options'] = tuple(rd.smembers('meal:%s' % tier))
-            
     else:
-        if (message == "Bee Hoon" or message == "Fried Rice"):
-            response['text'] = "You have selected " + message + " as your inflight meal. Use /cancel if you would like to cancel."
-        
-        elif (message == "Notifications"):
-            response['text'] = "Notifications has been turn off."
-
-        elif (message == "Timings"):
-            response['text'] = "Your flight is departing at 10pm today."
-
-        elif (message == "Seat number"):
-            reponse['text'] = "Your seat number is 23A. Have a pleasant flight."
-
-        elif (message == "Check-in Row"):
-            reponse['text'] = "You will be checking in at row 8."
-
-        else:
+        if state == 'meal'
+            response['text'] = "You have selected %s as your inflight meal" % message
             set_state('idle')
+        elif state == 'options':
+            if message == 'Notifications':
+                response['text'] = "Notifications has been turn off."
+            set_state('idle')
+        elif state == 'flight':
+            if message == 'Timings':
+                response['text'] = "Your flight is departing at 10pm today."
+            elif message == "Seat number":
+                reponse['text'] = "Your seat number is 23A. Have a pleasant flight."
+            elif message == "Check-in Row":
+                reponse['text'] = "You will be checking in at row 8."
+            set_state('idle')
+        else:
+            response['text'] = "I'm sorry, I didn't understand that."
 
     return response
+
+def bot_updates():
+    responses = []
+    flights = { f:rd.get('flight:%s'%f)for f in rd.smembers('flights') }
+
+    for u in rd.smembers('users'):
+        resp = {}
+        f = rd.hget(u,'flight')
+        status = flights.get(f, None)
+        notified = rd.hget(u,'notified')
+
+        if status != notified:
+            if status == "gate open":
+                resp['text'] = "Your boarding gate is open."
+            elif status == "row open":
+                resp['text'] = "Your check-in row is open.\nYou can /queue for a number"
+            rd.hset(u, 'notified', status)
+
+        if resp:
+            resp['uid'] = u
+            responses.append(resp)
+
+    return responses
 
 REDIS_URL=os.getenv("REDIS_URL")
 rd = StrictRedis.from_url(REDIS_URL, decode_responses=True)
