@@ -16,6 +16,26 @@ You can ask for information by sending these commands:
 /cancel - Cancel the current command
 """
 
+def get_options(uid, option):
+    if option == 'Notifications':
+        return "Notifications have been turned off"
+    return "Sorry, that is not available yet"
+
+def get_meal(uid, meal):
+    return "Your choice has been recorded"
+
+def get_attendant(uid, request):
+    return "Your request has been received. An attendant will be with you shortly"
+
+def get_flight_info(uid, info):
+    if info == 'Timings':
+        return "Your flight is departing at 10pm today"
+    elif info == "Seat number":
+        return "Your seat number is 23A"
+    elif info == "Check-in Row":
+        return "You will be checking in at T3, Row 8"
+    return "Sorry, that is not available yet"
+
 def get_id(service, sid=None, uid=None):
     if sid:
         return rd.hget(service, sid)
@@ -46,7 +66,8 @@ def bot_message(uid, message):
         elif cmd == 'cancel':
             set_state('idle')
             cancel_resp = { 'meal': 'Meal selection cancelled' }
-            response['text'] = cancel_resp[state]
+            if state in cancel_resp:
+                response['text'] = cancel_resp[state]
         elif cmd == 'options':
             set_state('options')
             response['text'] = "What do you want to change?"
@@ -69,20 +90,16 @@ def bot_message(uid, message):
             response['options'] = tuple(rd.smembers('meal:%s' % tier))
     else:
         if state == 'meal':
-            response['text'] = "You have selected %s as your inflight meal" % message
+            response['text'] = get_meal(uid, message)
             set_state(prev_state)
         elif state == 'options':
-            if message == 'Notifications':
-                response['text'] = "Notifications have been turned off."
-            set_state(prev_state)
+            response['text'] = get_options(uid, message)
         elif state == 'flight':
-            if message == 'Timings':
-                response['text'] = "Your flight is departing at 10pm today."
-            elif message == "Seat number":
-                response['text'] = "Your seat number is 23A. Have a pleasant flight."
-            elif message == "Check-in Row":
-                response['text'] = "You will be checking in at row 8."
-            set_state(prev_state)
+            response['text'] = get_flight_info(uid, message)
+        elif state in ('inflight', 'boarded'):
+            response['text'] = get_attendant(uid, message)
+        elif message == '✈':
+            response['text'] = "Thank you for choosing Singapore Airlines"
         else:
             response['text'] = "I'm sorry, I didn't understand that."
 
@@ -96,6 +113,7 @@ def bot_updates():
         resp = {}
         f = rd.hget(u,'flight')
         status = flights.get(f, None)
+        state = rd.hget(u, 'state')
         notified = rd.hget(u,'notified')
 
         if rd.lindex('queue',0) == u:
@@ -103,13 +121,15 @@ def bot_updates():
                 resp['text'] = "You are up next in the queue\nPlease be there in 5 minutes"
                 rd.hset(u, 'notified', 'row queue')
 
-        elif status != notified:
+        elif status and status != notified:
             if status == "gate open":
                 resp['text'] = "Your boarding gate is open."
             elif status == "row open":
                 resp['text'] = "Your check-in row is open.\nYou can /queue for a number"
+            elif status == "boarded":
+                resp['text'] = "Welcome Aboard. Feel free to key in any request."
             rd.hset(u, 'notified', status)
-            rd.hset(u, 'pstate', rd.hget(u, 'state'))
+            rd.hset(u, 'pstate', state)
             rd.hset(u, 'state', status)
 
         if resp:

@@ -1,13 +1,17 @@
 import os
 import logging
-from telegram import KeyboardButton, ReplyKeyboardMarkup
+from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardHide
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, Filters, Job
 from telegram.ext import MessageHandler, CallbackQueryHandler
 from bot import get_id, bot_init, bot_message, bot_updates
 
-def keyboard_buttons(options, inline=False, **kwargs):
-    buttons = options,
+def keyboard_buttons(inline=False, **kwargs):
+    if 'options' not in kwargs:
+        return ReplyKeyboardHide()
+
+    buttons = kwargs.get('options', ('✈',)),
+
     def makerow(r):
         if not inline:
             return tuple(KeyboardButton(n) for n in r)
@@ -28,8 +32,7 @@ def button(bot, update):
     query = update.callback_query
     uid = get_id('telegram', update.message.from_user['id'])
     response = bot_message(uid, query.data)
-    if 'options' in response:
-        response['reply_markup'] = keyboard_buttons(**response)
+    response['reply_markup'] = keyboard_buttons(**response)
 
     if response.get('edit', False):
         response['chat_id'] = query.message.chat_id
@@ -51,8 +54,7 @@ def handle_message(bot, update):
             return
 
     response = bot_message(uid, m.text)
-    if 'options' in response:
-        response['reply_markup'] = keyboard_buttons(**response)
+    response['reply_markup'] = keyboard_buttons(**response)
 
     if 'text' in response:
         m.reply_text(**response)
@@ -61,9 +63,8 @@ def check_status(bot, job):
     responses = bot_updates()
 
     for r in responses:
-        if 'options' in r:
-            r['reply_markup'] = keyboard_buttons(**r)
-        r['chat_id'] = get_id('telegram', r['uid'])
+        r['reply_markup'] = keyboard_buttons(**r)
+        r['chat_id'] = get_id('telegram', uid=r['uid'])
         bot.sendMessage(**r)
 
 TG_TOKEN=os.getenv("TELEGRAM_TOKEN")
