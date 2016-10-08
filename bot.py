@@ -6,9 +6,10 @@ Thank you for choosing Singapore Airlines.
 To find out what I can help you with, send /help
 """
 
-HELP_TEXT = """I'm your friendly attendant.
+HELP_TEXT = """I'm Kris, your Journey Concierge.
+I can inform you of your flight details.
 
-You can ask for information by sending these commands:
+Here are some things I can help you with:
 
 /meal - Choose your in-flight meal
 /flight - Check information about your flight
@@ -59,7 +60,7 @@ def bot_message(uid, message):
 
     if message.startswith('/'):
         cmd = message[1:]
-        if cmd == 'start':
+        if cmd.startswith('start'):
             response['text'] = START_TEXT
         elif cmd == 'help':
             response['text'] = HELP_TEXT
@@ -120,6 +121,11 @@ def bot_updates():
             if notified != 'row queue':
                 resp['text'] = "You are up next in the queue\nPlease be there in 5 minutes"
                 rd.hset(u, 'notified', 'row queue')
+
+        elif state == "checked in":
+            if notified != 'checked in'
+                resp['text'] = "The boarding gate is about 20 minutes away"
+                rd.hset(u, 'notified', 'checked in')
 
         elif status and status != notified:
             if status == "gate open":
